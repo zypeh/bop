@@ -1,0 +1,15 @@
+WHITESPACE = _{ " " | "\t" | "\r" | "\n" | ("//" ~ (!NEWLINE ~ ANY)*) }
+identifier = { ASCII_ALPHANUMERIC }
+string  = { "\"" ~ inner ~ "\"" }
+inner   = @{ (!("\"" | "\\") ~ ANY)* ~ (escape ~ inner)? }
+escape  = @{ "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t" | unicode) }
+unicode = @{ "u" ~ ASCII_HEX_DIGIT{4} }
+
+production = { identifier ~ "=" ~ (expression)? ~ "." }
+expression = { alternative ~ (("|" ~ alternative)*)? }
+alternative = { string | group | option | repetition }
+group = { "(" ~ expression ~ ")" }
+option = { "[" ~ expression ~ "]" }
+repetition = { "{" ~ expression ~ "}" }
+
+bop = { SOI ~ production* ~ EOI }
