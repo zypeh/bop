@@ -1,4 +1,4 @@
-WHITESPACE = _{ " " | "\t" | "\r" | "\n" | ("//" ~ (!NEWLINE ~ ANY)*) }
+WHITESPACE = _{ " " | "\t" | "\r" | "\n" | ("#" ~ (!NEWLINE ~ ANY)*) }
 identifier = { ASCII_ALPHANUMERIC }
 string  = { "\"" ~ inner ~ "\"" }
 inner   = @{ (!("\"" | "\\") ~ ANY)* ~ (escape ~ inner)? }
