@@ -34,7 +34,10 @@ fn parse(source: &str) -> Result<Vec<ParseTree>, Error<Rule>> {
             Rule::bop => {
                 let statements = pair.into_inner();
                 for statement in statements {
-                    ast.push(build_ast_from_production(statement));
+                    match statement.as_rule() {
+                        Rule::EOI => {},
+                        _ => ast.push(build_ast_from_production(statement)),
+                    }
                 }
             },
             Rule::EOI => {},
