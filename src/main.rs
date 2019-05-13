@@ -45,6 +45,7 @@ fn parse(source: &str) -> Result<Vec<ParseTree>, Error<Rule>> {
         }
     }
 
+    dbg!(ast.clone());
     Ok(ast)
 }
 
@@ -52,8 +53,6 @@ fn build_ast_from_production(statement: pest::iterators::Pair<Rule>) -> ParseTre
     let mut pairs = statement.into_inner();
     let identifier = pairs.next().unwrap().as_str();
     let expression = build_ast_from_expressions(pairs.next().unwrap().into_inner());
-
-    dbg!(ParseTree::NonTerminalDefinition(identifier, Box::new(expression.clone())));
     ParseTree::NonTerminalDefinition(identifier, Box::new(expression))
 }
 
@@ -61,7 +60,7 @@ fn build_ast_from_production(statement: pest::iterators::Pair<Rule>) -> ParseTre
 fn build_ast_from_expressions(pairs: pest::iterators::Pairs<Rule>) -> ParseTree {
     let mut alternatives = vec![];
     for pair in pairs {
-
+        dbg!(pair.clone());
         let ast = match pair.as_rule() {
             Rule::alternative => build_ast_from_alternative(pair.into_inner().next().unwrap()),
             Rule::expression => build_ast_from_expressions(pair.into_inner()),
