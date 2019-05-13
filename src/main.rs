@@ -54,26 +54,33 @@ fn build_ast_from_production(statement: pest::iterators::Pair<Rule>) -> ParseTre
     ParseTree::NonTerminalDefinition(identifier, Box::new(expression))
 }
 
-// alternative = { string | group | option | repetition }
+// expression = { alternative ~ (("|" ~ alternative)*)? }
 fn build_ast_from_expressions(pairs: pest::iterators::Pairs<Rule>) -> ParseTree {
     let mut alternatives = vec![];
     for pair in pairs {
 
         let ast = match pair.as_rule() {
-            Rule::string => {
-                match pair.into_inner().next().unwrap().as_str() {
-                    "" => ParseTree::Empty,
-                    x => ParseTree::Terminal(x),
-                }
-            },
+            Rule::alternative => build_ast_from_alternative(pair.into_inner().next().unwrap()),
             Rule::expression => build_ast_from_expressions(pair.into_inner()),
-            Rule::alternative => build_ast_from_expressions(pair.into_inner()),
-            Rule::group => build_ast_from_expressions(pair.into_inner()),
-            Rule::option => ParseTree::Optional(Box::new(build_ast_from_expressions(pair.into_inner()))),
-            Rule::repetition => ParseTree::Many(Box::new(build_ast_from_expressions(pair.into_inner()))),
             _ => unreachable!(pair),
         };
         alternatives.push(ast);
     };
     ParseTree::Choice(alternatives)
+}
+
+// alternative = { string | group | option | repetition }
+fn build_ast_from_alternative(pair: pest::iterators::Pair<Rule>) -> ParseTree {
+    match pair.as_rule() {
+        Rule::string => {
+            match pair.into_inner().next().unwrap().as_str() {
+                "" => ParseTree::Empty,
+                x => ParseTree::Terminal(x),
+            }
+        },
+        Rule::group => build_ast_from_expressions(pair.into_inner()),
+        Rule::option => ParseTree::Optional(Box::new(build_ast_from_expressions(pair.into_inner()))),
+        Rule::repetition => ParseTree::Many(Box::new(build_ast_from_expressions(pair.into_inner()))),
+        _ => unreachable!("build_ast_from_alternative"),
+    }
 }
