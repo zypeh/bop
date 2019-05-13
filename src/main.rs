@@ -20,7 +20,8 @@ fn main() {
     //     .next().unwrap(); // get and unwrap the `file` rule; never fails
 
     // dbg!(_file);
-    parse(&unparsed_file).expect("unsuccessful parse");
+    let x = parse(&unparsed_file).expect("unsuccessful parse");
+    dbg!(x);
     println!("Successfully parsed !");
 }
 
@@ -44,15 +45,16 @@ fn parse(source: &str) -> Result<Vec<ParseTree>, Error<Rule>> {
             _ => unreachable!("parse()")
         }
     }
-
-    dbg!(ast.clone());
     Ok(ast)
 }
 
 fn build_ast_from_production(statement: pest::iterators::Pair<Rule>) -> ParseTree {
     let mut pairs = statement.into_inner();
     let identifier = pairs.next().unwrap().as_str();
-    let expression = build_ast_from_expressions(pairs.next().unwrap().into_inner());
+
+    let x = pairs.next().unwrap().into_inner();
+    // dbg!(x.clone());
+    let expression = build_ast_from_expressions(x);
     ParseTree::NonTerminalDefinition(identifier, Box::new(expression))
 }
 
@@ -60,10 +62,9 @@ fn build_ast_from_production(statement: pest::iterators::Pair<Rule>) -> ParseTre
 fn build_ast_from_expressions(pairs: pest::iterators::Pairs<Rule>) -> ParseTree {
     let mut alternatives = vec![];
     for pair in pairs {
-        dbg!(pair.clone());
         let ast = match pair.as_rule() {
             Rule::alternative => build_ast_from_alternative(pair.into_inner().next().unwrap()),
-            Rule::expression => build_ast_from_expressions(pair.into_inner()),
+            Rule::expression => build_ast_from_expressions(pair.into_inner().next().unwrap().into_inner()),
             _ => unreachable!(pair),
         };
         alternatives.push(ast);
@@ -81,8 +82,8 @@ fn build_ast_from_alternative(pair: pest::iterators::Pair<Rule>) -> ParseTree {
             }
         },
         Rule::group => build_ast_from_expressions(pair.into_inner()),
-        Rule::option => ParseTree::Optional(Box::new(build_ast_from_expressions(pair.into_inner()))),
-        Rule::repetition => ParseTree::Many(Box::new(build_ast_from_expressions(pair.into_inner()))),
+        Rule::option => ParseTree::Optional(Box::new(build_ast_from_expressions(pair.into_inner().next().unwrap().into_inner()))),
+        Rule::repetition => ParseTree::Many(Box::new(build_ast_from_expressions(pair.into_inner().next().unwrap().into_inner()))),
         _ => unreachable!("build_ast_from_alternative"),
     }
 }
