@@ -81,7 +81,19 @@ fn build_ast_from_alternative(pair: pest::iterators::Pair<Rule>) -> ParseTree {
                 x => ParseTree::Terminal(x),
             }
         },
-        Rule::group => build_ast_from_expressions(pair.into_inner()),
+        Rule::group => {
+            dbg!(pair.clone().into_inner().peek().unwrap());
+            match pair.clone().into_inner().peek().unwrap().as_rule() {
+                Rule::group => build_ast_from_expressions(pair.into_inner()),
+                Rule::string => {
+                    match pair.into_inner().next().unwrap().as_str() {
+                        "" => ParseTree::Empty,
+                        x => ParseTree::Terminal(x),
+                    }
+                },
+                x => unreachable!()
+            }
+        },
         Rule::option => ParseTree::Optional(Box::new(build_ast_from_expressions(pair.into_inner().next().unwrap().into_inner()))),
         Rule::repetition => ParseTree::Many(Box::new(build_ast_from_expressions(pair.into_inner().next().unwrap().into_inner()))),
         _ => unreachable!("build_ast_from_alternative"),
