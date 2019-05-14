@@ -15,11 +15,6 @@ pub struct EBNFParser;
 
 fn main() {
     let unparsed_file = fs::read_to_string("./src/test.bop").expect("cannot read file");
-    // let _file = EBNFParser::parse(Rule::bop, &unparsed_file)
-    //     .expect("unsuccessful parse") // unwrap the parse result
-    //     .next().unwrap(); // get and unwrap the `file` rule; never fails
-
-    // dbg!(_file);
     let x = parse(&unparsed_file).expect("unsuccessful parse");
     dbg!(x);
     println!("Successfully parsed !");
@@ -37,7 +32,8 @@ fn parse(source: &str) -> Result<Vec<ParseTree>, Error<Rule>> {
                 for statement in statements {
                     match statement.as_rule() {
                         Rule::EOI => {},
-                        _ => ast.push(build_ast_from_production(statement)),
+                        Rule::production => ast.push(build_ast_from_production(statement)),
+                        _ => unreachable!("statement parse()"),
                     }
                 }
             },
@@ -48,42 +44,45 @@ fn parse(source: &str) -> Result<Vec<ParseTree>, Error<Rule>> {
     Ok(ast)
 }
 
-fn build_ast_from_production(statement: pest::iterators::Pair<Rule>) -> ParseTree {
-    let mut pairs = statement.into_inner();
+fn build_ast_from_production(production: pest::iterators::Pair<Rule>) -> ParseTree {
+    let mut pairs = production.into_inner();
     let identifier = pairs.next().unwrap().as_str();
 
-    let x = pairs.next().unwrap().into_inner();
-    // dbg!(x.clone());
-    let expression = build_ast_from_expressions(x);
-    ParseTree::NonTerminalDefinition(identifier, Box::new(expression))
+    match pairs.peek() {
+        None => ParseTree::NonTerminalDefinition(identifier, Box::new(ParseTree::Empty)),
+        Some(_) => {        
+            let expression = build_ast_from_expression(pairs.next().unwrap());
+            ParseTree::NonTerminalDefinition(identifier, Box::new(expression))
+        }
+    }
 }
 
-// expression = { alternative ~ (("|" ~ alternative)*)? }
-fn build_ast_from_expressions(pairs: pest::iterators::Pairs<Rule>) -> ParseTree {
-    let mut alternatives = vec![];
-    for pair in pairs {
-        let ast = match pair.as_rule() {
-            Rule::alternative => build_ast_from_alternative(pair.into_inner().next().unwrap()),
-            Rule::expression => build_ast_from_expressions(pair.into_inner().next().unwrap().into_inner()),
-            _ => unreachable!(pair),
-        };
-        alternatives.push(ast);
-    };
-    ParseTree::Choice(alternatives)
-}
+fn build_ast_from_expression(pair: pest::iterators::Pair<Rule>) -> ParseTree {
+    let mut nodes = vec![];
 
-// alternative = { string | group | option | repetition }
-fn build_ast_from_alternative(pair: pest::iterators::Pair<Rule>) -> ParseTree {
-    match pair.as_rule() {
-        Rule::string => {
-            match pair.into_inner().next().unwrap().as_str() {
-                "" => ParseTree::Empty,
-                x => ParseTree::Terminal(x),
-            }
-        },
-        Rule::group => build_ast_from_expressions(pair.into_inner()),
-        Rule::option => ParseTree::Optional(Box::new(build_ast_from_expressions(pair.into_inner().next().unwrap().into_inner()))),
-        Rule::repetition => ParseTree::Many(Box::new(build_ast_from_expressions(pair.into_inner().next().unwrap().into_inner()))),
-        _ => unreachable!("build_ast_from_alternative"),
+    let alternatives = pair.into_inner();
+    for alternative in alternatives {
+        let inner_pairs = alternative.into_inner();
+        for pair in inner_pairs {
+            let ast = match pair.as_rule() {
+                Rule::string => {
+                    match pair.into_inner().next().unwrap().as_str() {
+                        "" => ParseTree::Empty,
+                        x => ParseTree::Terminal(x),
+                    }
+                },
+                Rule::group => build_ast_from_expression(pair.into_inner().next().unwrap()),
+                Rule::option => ParseTree::Optional(Box::new(build_ast_from_expression(pair.into_inner().next().unwrap()))),
+                Rule::repetition => ParseTree::Many(Box::new(build_ast_from_expression(pair.into_inner().next().unwrap()))),
+                _ => unreachable!(pair),
+            };
+            nodes.push(ast);
+        }
+    }
+
+    match nodes.len() {
+        0 => unreachable!("empty nodes in bop file"),
+        1 => nodes[0].clone(),
+        _ => ParseTree::Choice(nodes),
     }
 }
